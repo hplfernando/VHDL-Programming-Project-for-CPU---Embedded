@@ -1,0 +1,45 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity CPU is
+    port (
+        clk          : in std_logic;                   -- Clock input
+        rst          : in std_logic;                   -- Reset input
+        btn_add      : in std_logic;                   -- Button to perform addition
+        switches     : in std_logic_vector(9 downto 0); -- 10 switches for input
+        leds         : out std_logic_vector(9 downto 0); -- 10 LEDs for output
+        onboard_leds : out std_logic_vector(9 downto 0)  -- Onboard LEDs for output
+    );
+end entity;
+
+architecture Behavioral of CPU is
+    signal reg_a       : std_logic_vector(4 downto 0); -- 5 bits for reg_a
+    signal reg_b       : std_logic_vector(4 downto 0); -- 5 bits for reg_b
+    signal alu_result   : std_logic_vector(9 downto 0); -- 10 bits for the result
+begin
+
+    -- Process for input and ALU operation
+    process(clk, rst)
+    begin
+        if rst = '1' then
+            reg_a <= (others => '0'); -- Reset reg_a
+            reg_b <= (others => '0'); -- Reset reg_b
+            alu_result <= (others => '0'); -- Reset result
+        elsif rising_edge(clk) then
+            if btn_add = '1' then
+                -- Assign the upper 5 bits for reg_a and lower 5 bits for reg_b
+                reg_a <= switches(9 downto 5); -- reg_a gets bits 9 to 5
+                reg_b <= switches(4 downto 0); -- reg_b gets bits 4 to 0
+
+                -- Perform addition, ensuring proper size handling
+                alu_result <= std_logic_vector(resize(unsigned(reg_a) + unsigned(reg_b), 10)); -- Add reg_a and reg_b
+            end if;
+        end if;
+    end process;
+
+    -- Output result to LEDs
+    leds <= alu_result;          -- Display the result on external LEDs
+    onboard_leds <= alu_result;  -- Display the result on onboard LEDs
+
+end architecture;

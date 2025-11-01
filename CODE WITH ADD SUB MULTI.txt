@@ -1,0 +1,68 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity CPU is
+    port (
+        clk          : in std_logic;                   -- Clock input
+        rst          : in std_logic;                   -- Reset input
+        btn_add      : in std_logic;                   -- Button to perform calculation
+        switches     : in std_logic_vector(9 downto 0); -- 10 switches for input
+        leds         : out std_logic_vector(9 downto 0); -- 10 LEDs for output
+        onboard_leds : out std_logic_vector(9 downto 0)  -- Onboard LEDs for output
+    );
+end entity;
+
+architecture Behavioral of CPU is
+    -- Internal signals for registers and results
+    signal reg_a       : std_logic_vector(4 downto 0); -- 5 bits for reg_a
+    signal reg_b       : std_logic_vector(4 downto 0); -- 5 bits for reg_b
+    signal value1      : std_logic_vector(9 downto 0); -- 10 bits for intermediate value (reg_a + reg_b)
+    signal value2      : std_logic_vector(9 downto 0); -- 10 bits for intermediate value2 (value1 * reg_a)
+    signal alu_result  : std_logic_vector(9 downto 0); -- 10 bits for final result (value2 - reg_a)
+    signal calc_state  : integer range 0 to 2 := 0;    -- State to control step-by-step operations
+begin
+
+    -- Process for input and ALU operation with multi-step computation
+    process(clk, rst)
+    begin
+        if rst = '1' then
+            -- Reset all signals and state
+            reg_a <= (others => '0'); 
+            reg_b <= (others => '0'); 
+            value1 <= (others => '0');
+            value2 <= (others => '0');
+            alu_result <= (others => '0');
+            calc_state <= 0; -- Start at initial state
+        elsif rising_edge(clk) then
+            if btn_add = '1' then
+                case calc_state is
+                    -- Step 1: Add reg_a and reg_b (calculate value1)
+                    when 0 =>
+                        reg_a <= switches(9 downto 5); -- Get reg_a from switches
+                        reg_b <= switches(4 downto 0); -- Get reg_b from switches
+                        value1 <= std_logic_vector(resize(unsigned(reg_a) + unsigned(reg_b), 10));
+                        calc_state <= 1; -- Move to the next step
+
+                    -- Step 2: Multiply value1 by reg_a (calculate value2)
+                    when 1 =>
+                        value2 <= std_logic_vector(resize(unsigned(value1) * unsigned(reg_a), 10));
+                        calc_state <= 2; -- Move to the next step
+
+                    -- Step 3: Subtract reg_a from value2 (calculate alu_result)
+                    when 2 =>
+                        alu_result <= std_logic_vector(resize(unsigned(value2) - unsigned(reg_a), 10));
+                        calc_state <= 0; -- Go back to step 0, ready for next operation
+
+                    when others =>
+                        calc_state <= 0; -- Default case (shouldn't happen)
+                end case;
+            end if;
+        end if;
+    end process;
+
+    -- Output the final ALU result to LEDs
+    leds <= alu_result;          -- Display the result on external LEDs
+    onboard_leds <= alu_result;  -- Display the result on onboard LEDs
+
+end architecture;
